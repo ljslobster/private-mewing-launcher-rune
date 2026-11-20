@@ -119,5 +119,6 @@ pub fn view(s: &AppState, cx: &mut Cx<AppState>) -> El {
         .child(ram_card(s, narrow))
         .child(behavior_card(s, narrow))
         .scroll(ScrollSpec { stick_bottom: false });
-    widgets::shell(s, size, content, true)
+    cx.caption_color(theme::white());
+    widgets::shell(s, size, content, true, cx.chrome_insets())
 }

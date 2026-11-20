@@ -1,4 +1,4 @@
-use rune::{Color, El, Icon, SurfaceFit, col, el, icon, row, text, text_input};
+use rune::{ChromeInsets, Color, El, Icon, SurfaceFit, col, el, icon, row, text, text_input};
 
 use crate::icons;
 use crate::state::{AppState, ModalKind, Route};
@@ -61,7 +61,7 @@ fn sidebar(s: &AppState, size: [f32; 2]) -> El {
 fn variant_select(s: &AppState, compact: bool) -> El {
     row().key("variant-select").w(if compact { 200.0 } else { 252.0 }).h(40.0).px(12.0).gap(10.0)
         .radius(10.0).fill(theme::c(SURFACE)).border(1.0, theme::c(BORDER)).hover(theme::c(RAISED)).center_y()
-        .role("button").label("Cambiar variante del pack").focusable(true)
+        .role("button").label("Cambiar evento").focusable(true)
         .on_press(|s: &mut AppState| s.modal = Some(ModalKind::Variant))
         .child(icon(&icons::EXTENSION, 15.0).color(theme::accent()))
         .child(label(&s.event.title, 12.0, 500.0, theme::white()).grow(1.0).min_w(0.0).truncate())
@@ -132,14 +132,28 @@ fn footer(s: &AppState, size: [f32; 2]) -> El {
         .child(launch_button(s, compact))
 }
 
-pub fn shell(s: &AppState, size: [f32; 2], content: El, show_footer: bool) -> El {
+fn titlebar(s: &AppState, insets: ChromeInsets) -> El {
+    let mark = match &s.icon {
+        Some(image) => el().size(16.0, 16.0).radius(4.0).clip_rounded(4.0)
+            .pixels_fit(image.pixels(), SurfaceFit::Fill),
+        None => el().size(16.0, 16.0).radius(4.0).fill(theme::accent()),
+    };
+    row().key("titlebar").w_full().h(insets.height).window_drag()
+        .pl(insets.leading + 16.0).pr(insets.trailing + 12.0).gap(9.0).center_y()
+        .fill(theme::c(FLOOR)).border_sides([0.0, 0.0, 1.0, 0.0], theme::c(BORDER))
+        .child(mark)
+        .child(label(crate::data::APP_NAME, 12.0, 600.0, theme::white()))
+}
+
+pub fn shell(s: &AppState, size: [f32; 2], content: El, show_footer: bool, insets: ChromeInsets) -> El {
     let mut workspace = col().key("workspace").grow(1.0).min_w(0.0).min_h(0.0)
         .child(header(s, size))
         .child(el().key("slot").grow(1.0).min_h(0.0).min_w(0.0)
             .px(if size[0] < 1100.0 { 18.0 } else { 28.0 }).pt(8.0).pb(24.0).child(content));
     if show_footer { workspace = workspace.child(footer(s, size)); }
-    let mut root = col().key("root").w_full().h_full().fill(theme::c(FLOOR))
-        .child(row().key("body").w_full().grow(1.0).min_h(0.0).child(sidebar(s, size)).child(workspace));
+    let mut root = col().key("root").w_full().h_full().fill(theme::c(FLOOR));
+    if insets.height > 0.0 { root = root.child(titlebar(s, insets)); }
+    root = root.child(row().key("body").w_full().grow(1.0).min_h(0.0).child(sidebar(s, size)).child(workspace));
     if let Some(modal) = crate::home::modal(s, size) { root = root.child(modal); }
     root
 }

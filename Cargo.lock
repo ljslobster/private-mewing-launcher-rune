@@ -3037,13 +3037,15 @@ checksum = "e8cf8e6a8aa66ce33f63993ffc4ea4271eb5b0530a9002db8455ea6050c77bfa"
 
 [[package]]
 name = "private-mewing-launcher"
-version = "2.0.1"
+version = "2.0.2"
 dependencies = [
  "mc-launcher-core",
  "reqwest 0.12.28",
  "rune",
+ "rune-fx",
  "serde",
  "serde_json",
+ "wgpu",
 ]
 
 [[package]]
@@ -3569,6 +3571,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "rune-fx"
+version = "0.0.1"
+source = "git+https://github.com/anomalyco/rune?rev=8fbc395190dbff430db9d9fc515bb6ac8cc7d13d#8fbc395190dbff430db9d9fc515bb6ac8cc7d13d"
+dependencies = [
+ "bytemuck",
+ "rune-motion",
+ "rune-staging",
+ "wgpu",
+]
+
+[[package]]
 name = "rune-gpu"
 version = "0.0.1"
 source = "git+https://github.com/anomalyco/rune?rev=8fbc395190dbff430db9d9fc515bb6ac8cc7d13d#8fbc395190dbff430db9d9fc515bb6ac8cc7d13d"
@@ -3746,7 +3759,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys 0.4.15",
- "windows-sys 0.59.0",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -5392,15 +5405,6 @@ name = "windows-sys"
 version = "0.52.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "282be5f36a8ce781fad8c8ae18fa3f9beff57ec1b52cb3de0789201425d9a33d"
-dependencies = [
- "windows-targets 0.52.6",
-]
-
-[[package]]
-name = "windows-sys"
-version = "0.59.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1e38bc4d79ed67fd075bcc251a1c39b32a1776bbe92e5bef1f0bf1f8c531853b"
 dependencies = [
  "windows-targets 0.52.6",
 ]

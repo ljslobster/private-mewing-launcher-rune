@@ -14,11 +14,22 @@ fn badge(caption: &str, glyph: &'static Icon) -> El {
 
 fn hero(s: &AppState, height: f32, fill: bool) -> El {
     let mut body = el().key("hero").w_full().radius(18.0).clip_rounded(18.0)
-        .fill(theme::c(RAISED)).border(1.0, theme::c(BORDER));
+        .fill(theme::c(RAISED)).border(1.0, theme::c(BORDER))
+        .on_hover_change(|s: &mut AppState, inside, _: &mut rune::Tx| {
+            s.hero_hover = inside;
+            if !inside { s.hero_cursor = None; }
+        })
+        .on_pointer_move_local(|s: &mut AppState, p, _: &mut rune::Tx| {
+            s.hero_cursor = Some([p.x, p.y]);
+        });
     body = if fill { body.grow(1.0).min_h(240.0) } else { body.h(height) };
     if let Some(image) = &s.hero {
         body = body.child(el().key("hero-image").w_full().h_full()
-            .pixels_fit(image.pixels(), SurfaceFit::Fill).opacity(0.7));
+            .pixels_fit(image.pixels(), SurfaceFit::Fill).opacity(0.7))
+            .child(el().key("hero-metal").absolute(0.0, 0.0).w_full().h_full()
+                .effect(crate::fx::HERO_METAL))
+            .child(el().key("hero-wave").absolute(0.0, 0.0).w_full().h_full()
+                .effect(crate::fx::HERO_WAVE).effect_backdrop(true));
     }
     body.child(el().key("hero-shade").absolute(0.0, 0.0).w_full().h_full().fill(theme::c(FLOOR).alpha(0.4)))
         .child(col().key("hero-content").absolute(0.0, 0.0).w_full().h_full().padding(26.0).justify_end()
@@ -53,8 +64,8 @@ fn left_column(s: &AppState, width: f32, height: f32, fill: bool) -> El {
                 .font(theme::style(13.0, 400.0).lh(21.0)).color(theme::c(SECONDARY_TEXT)).wrap().w(text_width)), 20.0))
 }
 
-fn tab_button(key: &str, caption: &str, glyph: &'static Icon, active: bool, tab: Tab) -> El {
-    row().key(key).grow(1.0).h(36.0).gap(7.0).center().radius(8.0)
+fn tab_button(key: &str, caption: &str, glyph: &'static Icon, active: bool, grow: f32, tab: Tab) -> El {
+    row().key(key).grow(grow).h(36.0).gap(6.0).px(8.0).center().radius(8.0)
         .fill(if active { theme::c(RAISED) } else { theme::c(FLOOR) }).hover(theme::c(RAISED))
         .role("button").label(caption).focusable(true)
         .on_press(move |s: &mut AppState| s.tab = tab)
@@ -67,7 +78,7 @@ fn mod_row(s: &AppState, name: &str, file_name: &str, installed: bool, thumb: Op
         Some(image) => el().key(format!("thumb-{name}")).size(36.0, 36.0).radius(9.0)
             .clip_rounded(9.0).pixels_fit(image.pixels(), SurfaceFit::Fill),
         None => el().key(format!("thumb-{name}")).size(36.0, 36.0).radius(9.0).fill(theme::c(RAISED)).center()
-            .child(icon(if s.tab == Tab::Mods { &icons::EXTENSION } else { &icons::FOLDER }, 18.0).color(theme::c(MUTED))),
+            .child(icon(match s.tab { Tab::Mods => &icons::EXTENSION, Tab::Shaders => &icons::BOLT, Tab::Resources => &icons::FOLDER }, 18.0).color(theme::c(MUTED))),
     };
     let tab = s.tab;
     let disabled = s.busy || s.loading || s.launching || !s.api_available;
@@ -88,7 +99,11 @@ fn mod_row(s: &AppState, name: &str, file_name: &str, installed: bool, thumb: Op
 
 fn filtered_mods(s: &AppState) -> Vec<(usize, &str, &str, Option<&rune::Image>)> {
     let query = s.search.text.trim().to_lowercase();
-    let (assets, thumbnails) = if s.tab == Tab::Mods { (&s.event.mods, &s.thumbnails) } else { (&s.event.resource_packs, &s.resource_thumbnails) };
+    let (assets, thumbnails): (&[data::ApiMod], &[Option<rune::Image>]) = match s.tab {
+        Tab::Mods => (&s.event.mods, &s.thumbnails),
+        Tab::Shaders => (s.event.shader_packs_list(), &[]),
+        Tab::Resources => (&s.event.resource_packs, &s.resource_thumbnails),
+    };
     assets.iter().enumerate()
         .filter(|(_, m)| query.is_empty() || m.id.to_lowercase().contains(&query) || m.file_name.to_lowercase().contains(&query))
         .map(|(i, m)| (i, m.id.as_str(), m.file_name.as_str(), thumbnails.get(i).and_then(|image| image.as_ref())))
@@ -97,7 +112,11 @@ fn filtered_mods(s: &AppState) -> Vec<(usize, &str, &str, Option<&rune::Image>)>
 
 pub fn panel(s: &AppState, narrow: bool) -> El {
     let items = filtered_mods(s);
-    let total = if s.tab == Tab::Mods { s.event.mods.len() } else { s.event.resource_packs.len() };
+    let total = match s.tab {
+        Tab::Mods => s.event.mods.len(),
+        Tab::Shaders => s.event.shader_packs_list().len(),
+        Tab::Resources => s.event.resource_packs.len(),
+    };
     let mut list = col().key("mod-list").w_full().grow(1.0).min_h(0.0).px(18.0).pb(18.0)
         .scroll(ScrollSpec { stick_bottom: false });
     if items.is_empty() {
@@ -111,7 +130,7 @@ pub fn panel(s: &AppState, narrow: bool) -> El {
                 .on_press(|s: &mut AppState| s.search = rune::TextEdit::new(""))
                 .child(label("Limpiar búsqueda", 12.0, 600.0, theme::accent()))));
     } else {
-        let kind = if s.tab == Tab::Mods { "mods" } else { "resource_packs" };
+        let kind = match s.tab { Tab::Mods => "mods", Tab::Shaders => "shader_packs", Tab::Resources => "resource_packs" };
         let folder = crate::paths::asset_folder(kind, &crate::paths::instance_dir(&s.event.id));
         for (index, name, file_name, thumb) in &items {
             let installed = crate::paths::safe_file_name(file_name) && folder.join(file_name).is_file();
@@ -124,7 +143,11 @@ pub fn panel(s: &AppState, narrow: bool) -> El {
         .child(rune::text_input(&s.search, theme::style(12.0, 400.0)).key("mods-search")
             .label("Buscar en el contenido del pack").single_line().grow(1.0).min_w(0.0).py(12.0).h_full().center_y()
             .color(theme::white()).caret(theme::accent(), theme::accent().alpha(0.2))
-            .placeholder(if s.tab == Tab::Mods { "Buscar mods o archivos…" } else { "Buscar resource packs o archivos…" }, theme::c(MUTED))
+            .placeholder(match s.tab {
+                Tab::Mods => "Buscar mods o archivos…",
+                Tab::Shaders => "Buscar shaders o archivos…",
+                Tab::Resources => "Buscar resource packs o archivos…",
+            }, theme::c(MUTED))
             .on_edit(|s: &mut AppState| &mut s.search));
     if !s.search.text.is_empty() {
         search = search.child(el().key("search-clear").size(30.0, 30.0).center().radius(8.0).hover(theme::c(RAISED))
@@ -132,6 +155,12 @@ pub fn panel(s: &AppState, narrow: bool) -> El {
             .on_press(|s: &mut AppState| s.search = rune::TextEdit::new(""))
             .child(icon(&icons::CLOSE, 13.0).color(theme::c(MUTED_LIGHT))));
     }
+    let mut tabs = row().key("tabs").w_full().padding(4.0).gap(4.0).radius(10.0).fill(theme::c(FLOOR))
+        .child(tab_button("tab-MODS", "Mods", &icons::EXTENSION, s.tab == Tab::Mods, 1.0, Tab::Mods));
+    if !s.event.shader_packs_list().is_empty() {
+        tabs = tabs.child(tab_button("tab-SHADERS", "Shaders", &icons::BOLT, s.tab == Tab::Shaders, 1.0, Tab::Shaders));
+    }
+    tabs = tabs.child(tab_button("tab-RESOURCE PACKS", "Resource packs", &icons::FOLDER, s.tab == Tab::Resources, 1.35, Tab::Resources));
     let mut root = col().key("mods-panel").min_h(0.0).radius(16.0).clip_rounded(16.0)
         .fill(theme::c(SURFACE)).border(1.0, theme::c(BORDER));
     root = if narrow { root.h(480.0).w_full() } else { root.w(400.0).h_full() };
@@ -139,9 +168,7 @@ pub fn panel(s: &AppState, narrow: bool) -> El {
         .child(row().gap(10.0).center_y()
             .child(label("Contenido del pack", 16.0, 600.0, theme::white()).grow(1.0))
             .child(label(&format!("{} / {total}", items.len()), 11.0, 500.0, theme::c(MUTED))))
-        .child(row().key("tabs").w_full().padding(4.0).gap(4.0).radius(10.0).fill(theme::c(FLOOR))
-            .child(tab_button("tab-MODS", "Mods", &icons::EXTENSION, s.tab == Tab::Mods, Tab::Mods))
-            .child(tab_button("tab-RESOURCE PACKS", "Resource packs", &icons::FOLDER, s.tab == Tab::Resources, Tab::Resources)))
+        .child(tabs)
         .child(search))
         .child(el().h(1.0).w_full().fill(theme::c(BORDER))).child(list)
 }
@@ -282,7 +309,7 @@ fn variant_modal(s: &AppState, size: [f32; 2]) -> El {
             .child(icon(if active { &icons::CHECK } else { &icons::PLAY }, 17.0).color(if active { theme::accent() } else { theme::c(MUTED) })));
     }
     widgets::modal_shell(modal_panel("variant-modal", size, 620.0, 400.0)
-        .child(modal_header("Elige tu variante", "Cada variante conserva sus propios archivos y configuración.")).child(options))
+        .child(modal_header("Elige el evento", "")).child(options))
 }
 
 pub fn modal(s: &AppState, size: [f32; 2]) -> Option<El> {
@@ -312,5 +339,6 @@ pub fn view(s: &AppState, cx: &mut Cx<AppState>) -> El {
             .child(left)
             .child(panel(s, false)));
     }
-    widgets::shell(s, size, content, true)
+    cx.caption_color(theme::white());
+    widgets::shell(s, size, content, true, cx.chrome_insets())
 }

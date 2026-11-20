@@ -12,7 +12,7 @@ use crate::{data, instance, manifest, minecraft, paths};
 pub enum Route { Home, Settings }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub enum Tab { Mods, Resources }
+pub enum Tab { Mods, Shaders, Resources }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum ModalKind { Logs, Downloads, Variant, ConfirmSync }
@@ -41,6 +41,8 @@ pub struct AppState {
     pub hide_on_start: bool,
     pub ram_menu: Option<bool>,
     pub hero: Option<Image>,
+    pub hero_hover: bool,
+    pub hero_cursor: Option<[f32; 2]>,
     pub icon: Option<Image>,
     pub cache: Option<ImageCache>,
     pub logs: Vec<String>,
@@ -78,7 +80,7 @@ impl Default for AppState {
             status: String::new(), modal: None,
             max_ram: ram_index(&settings.maxRam, 3), min_ram: ram_index(&settings.minRam, 1),
             hide_on_start: settings.hideLauncherOnStart.unwrap_or(false), ram_menu: None,
-            hero: None, icon: None, cache: None, logs: Vec::new(), log_autoscroll: true,
+            hero: None, hero_hover: false, hero_cursor: None, icon: None, cache: None, logs: Vec::new(), log_autoscroll: true,
             downloads: BTreeMap::new(), event: data::fallback_event(), events: Vec::new(),
             thumbnails: Vec::new(), resource_thumbnails: Vec::new(), server_online: false,
             settings, viewport: [1536.0, 864.0], handle: None, stop: None,
@@ -172,6 +174,9 @@ impl AppState {
                     data::save_settings(&s.settings);
                 }
                 s.search = TextEdit::new("");
+                if s.tab == Tab::Shaders && s.event.shader_packs_list().is_empty() { s.tab = Tab::Mods; }
+                s.hero_hover = false;
+                s.hero_cursor = None;
                 s.thumbnails = vec![None; s.event.mods.len()];
                 s.resource_thumbnails = vec![None; s.event.resource_packs.len()];
                 s.refresh_installation();
@@ -314,14 +319,17 @@ impl AppState {
 
     pub fn reinstall(&mut self, tab: Tab, index: usize) {
         if self.busy || self.launching || self.loading || !self.api_available { return; }
-        let assets = if tab == Tab::Mods { &self.event.mods } else { &self.event.resource_packs };
+        let (assets, kind): (&[ApiMod], &'static str) = match tab {
+            Tab::Mods => (&self.event.mods, "mods"),
+            Tab::Shaders => (self.event.shader_packs_list(), "shader_packs"),
+            Tab::Resources => (&self.event.resource_packs, "resource_packs"),
+        };
         let Some(asset) = assets.get(index).cloned() else { return; };
         let Some(handle) = self.handle.clone() else { return; };
         let event_id = self.event.id.clone();
         self.busy = true;
         self.modal = Some(ModalKind::Downloads);
         std::thread::spawn(move || {
-            let kind = if tab == Tab::Mods { "mods" } else { "resource_packs" };
             let force = [asset.file_name.clone()].into_iter().collect();
             let game = paths::ensure_instance(&event_id);
             let (_, mut failed) = crate::download::download_assets(std::slice::from_ref(&asset), kind,

@@ -6,7 +6,7 @@ use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 
 pub const APP_NAME: &str = "Private Mewing Launcher";
-pub const APP_VERSION: &str = "2.0.1";
+pub const APP_VERSION: &str = "2.0.2";
 pub const EVENTS_URL: &str = "https://private-mewing-launcher-api.vercel.app/events";
 pub const LAUNCHER_LATEST_URL: &str = "https://private-mewing-launcher-api.vercel.app/launcher/latest";
 

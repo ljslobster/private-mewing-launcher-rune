@@ -3,6 +3,7 @@
 mod data;
 mod discord;
 mod download;
+mod fx;
 mod home;
 mod icons;
 mod instance;
@@ -72,6 +73,7 @@ fn main() {
         ("logs", |s: &mut AppState| s.modal = Some(ModalKind::Logs)),
         ("downloads", |s: &mut AppState| s.modal = Some(ModalKind::Downloads)),
         ("resources", |s: &mut AppState| s.tab = Tab::Resources),
+        ("shaders", |s: &mut AppState| s.tab = Tab::Shaders),
         ("search-empty", |s: &mut AppState| s.search = rune::TextEdit::new("no-match-fixture")),
         ("ram-menu", |s: &mut AppState| { s.route = Route::Settings; s.ram_menu = Some(true); }),
         ("sync", |s: &mut AppState| s.modal = Some(ModalKind::ConfirmSync)),
@@ -91,10 +93,13 @@ fn main() {
     spec.setup = Some(setup);
     spec.on_key = Some(on_key);
     let _ = rune::set_app_icon(include_bytes!("../assets/icon-256.png").to_vec());
-    let app = rune::App::new(spec).on_quit(|s, _| {
-        if let Some(stop) = s.stop.take() { let _ = stop.send(()); }
-        s.presence = None;
-    });
+    let app = rune::App::new(spec)
+        .titlebar(rune::Titlebar::new(40.0))
+        .compositor(fx::HeroWave::default())
+        .on_quit(|s, _| {
+            if let Some(stop) = s.stop.take() { let _ = stop.send(()); }
+            s.presence = None;
+        });
     let handle = app.handle();
     app.init(move || {
         let mut state = AppState::default();

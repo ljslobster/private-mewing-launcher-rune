@@ -1,11 +1,13 @@
 [package]
 name = "private-mewing-launcher"
-version = "2.0.1"
+version = "2.0.2"
 edition = "2021"
 description = "Private Mewing Launcher for Mewing Studios events."
 
 [dependencies]
 rune = { git = "https://github.com/anomalyco/rune", rev = "8fbc395190dbff430db9d9fc515bb6ac8cc7d13d" }
+rune-fx = { git = "https://github.com/anomalyco/rune", rev = "8fbc395190dbff430db9d9fc515bb6ac8cc7d13d" }
+wgpu = { version = "~30.0.1", default-features = false, features = ["std", "wgsl"] }
 reqwest = { version = "0.12", default-features = false, features = ["blocking", "json", "rustls-tls"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
