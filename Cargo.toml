@@ -1,6 +1,6 @@
 [package]
 name = "private-mewing-launcher"
-version = "2.0.0"
+version = "2.0.1"
 edition = "2021"
 description = "Private Mewing Launcher for Mewing Studios events."
 
