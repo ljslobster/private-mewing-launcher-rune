@@ -1,0 +1,26 @@
+[package]
+name = "private-mewing-launcher"
+version = "2.0.0"
+edition = "2021"
+description = "Private Mewing Launcher for Mewing Studios events."
+
+[dependencies]
+rune = { git = "https://github.com/anomalyco/rune", rev = "8fbc395190dbff430db9d9fc515bb6ac8cc7d13d" }
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "json", "rustls-tls"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+mc-launcher-core = "0.1.2"
+
+# Cargo does not inherit patches from a dependency: an app building Rune must
+# repeat the vendored crates from Rune's own [patch.crates-io] table.
+[patch.crates-io]
+winit = { git = "https://github.com/anomalyco/rune", rev = "8fbc395190dbff430db9d9fc515bb6ac8cc7d13d" }
+sctk-adwaita = { git = "https://github.com/anomalyco/rune", rev = "8fbc395190dbff430db9d9fc515bb6ac8cc7d13d" }
+parley_engine = { git = "https://github.com/anomalyco/rune", rev = "8fbc395190dbff430db9d9fc515bb6ac8cc7d13d" }
+wgpu-hal = { git = "https://github.com/anomalyco/rune", rev = "8fbc395190dbff430db9d9fc515bb6ac8cc7d13d" }
+accesskit_windows = { git = "https://github.com/anomalyco/rune", rev = "8fbc395190dbff430db9d9fc515bb6ac8cc7d13d" }
+accesskit_macos = { git = "https://github.com/anomalyco/rune", rev = "8fbc395190dbff430db9d9fc515bb6ac8cc7d13d" }
+
+[profile.release]
+opt-level = 3
+lto = "thin"

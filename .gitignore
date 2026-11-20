@@ -1,0 +1,7 @@
+/target
+/dist/
+*.png
+!assets/**/*.png
+/snaps/
+*.snap.png
+/private-mewing-launcher-de-flet-a-rune.json
