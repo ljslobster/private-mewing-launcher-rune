@@ -12,9 +12,10 @@ fn badge(caption: &str, glyph: &'static Icon) -> El {
         theme::c(FLOOR).alpha(0.88), theme::c(BORDER), 10.0, 7.0)
 }
 
-fn hero(s: &AppState, height: f32) -> El {
-    let mut body = el().key("hero").w_full().h(height).radius(18.0).clip_rounded(18.0)
+fn hero(s: &AppState, height: f32, fill: bool) -> El {
+    let mut body = el().key("hero").w_full().radius(18.0).clip_rounded(18.0)
         .fill(theme::c(RAISED)).border(1.0, theme::c(BORDER));
+    body = if fill { body.grow(1.0).min_h(240.0) } else { body.h(height) };
     if let Some(image) = &s.hero {
         body = body.child(el().key("hero-image").w_full().h_full()
             .pixels_fit(image.pixels(), SurfaceFit::Fill).opacity(0.7));
@@ -22,7 +23,7 @@ fn hero(s: &AppState, height: f32) -> El {
     body.child(el().key("hero-shade").absolute(0.0, 0.0).w_full().h_full().fill(theme::c(FLOOR).alpha(0.4)))
         .child(col().key("hero-content").absolute(0.0, 0.0).w_full().h_full().padding(26.0).justify_end()
             .child(col().gap(12.0)
-                .child(label(&s.event.title, if height > 270.0 { 38.0 } else { 30.0 }, 700.0, theme::white()).wrap())
+                .child(label(&s.event.title, if fill || height > 270.0 { 38.0 } else { 30.0 }, 700.0, theme::white()).wrap())
                 .child(row().gap(8.0).flex_wrap()
                     .child(badge(&format!("Minecraft {}", s.event.loader_version()), &icons::TERMINAL))
                     .child(badge(if s.event.is_fabric { "Fabric" } else { "Forge" }, &icons::BOLT))
@@ -38,10 +39,10 @@ fn stat(glyph: &'static Icon, value: &str, caption: &str) -> El {
             .child(label(caption, 10.0, 400.0, theme::c(MUTED))))
 }
 
-fn left_column(s: &AppState, width: f32, height: f32) -> El {
+fn left_column(s: &AppState, width: f32, height: f32, fill: bool) -> El {
     let text_width = (width - 42.0).max(100.0);
     col().key("left-column").w(width).min_w(0.0).gap(16.0)
-        .child(hero(s, if height > 760.0 { 290.0 } else { 240.0 }))
+        .child(hero(s, if height > 760.0 { 290.0 } else { 240.0 }, fill))
         .child(row().key("pack-stats").w_full().gap(10.0)
             .child(stat(&icons::EXTENSION, &s.event.mods.len().to_string(), "Mods"))
             .child(stat(&icons::FOLDER, &s.event.resource_packs.len().to_string(), "Resource packs"))
@@ -301,11 +302,14 @@ pub fn view(s: &AppState, cx: &mut Cx<AppState>) -> El {
     let width = (size[0] - widgets::sidebar_width(size) - padding).max(260.0);
     let mut content = col().key("home-content").w_full().grow(1.0).min_h(0.0).gap(22.0);
     if narrow {
-        content = content.child(left_column(s, width, size[1])).child(panel(s, true))
+        content = content.child(left_column(s, width, size[1], false)).child(panel(s, true))
             .scroll(ScrollSpec { stick_bottom: false });
     } else {
+        let fill = size[1] >= 640.0;
+        let mut left = left_column(s, width - 422.0, size[1], fill).h_full().min_h(0.0);
+        if !fill { left = left.scroll(ScrollSpec { stick_bottom: false }); }
         content = content.child(row().w_full().grow(1.0).min_h(0.0).gap(22.0)
-            .child(left_column(s, width - 422.0, size[1]).h_full().min_h(0.0).scroll(ScrollSpec { stick_bottom: false }))
+            .child(left)
             .child(panel(s, false)));
     }
     widgets::shell(s, size, content, true)
